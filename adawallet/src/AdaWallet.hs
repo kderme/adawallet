@@ -13,11 +13,13 @@ import Cardano.Mnemonic (
   mnemonicToText,
  )
 import Control.Exception (throwIO)
-import Control.Monad (forM_, join)
+import Control.Monad (forM_, join, void)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 (unpack)
 import Data.Foldable (traverse_)
 import Data.Maybe
+import qualified DB.Schema as DB
+import Database
 import qualified Data.Text as T
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
@@ -260,8 +262,8 @@ createWallet source = do
     Left e -> error $ "problem occurred: " ++ show e
     Right xprv -> do
       let isEncrypted = passphrase /= ""
-          stateTable = StateTable 1 xprv isEncrypted testnet projectId
-      insertState stateTable
+          stateTable = DB.State 1 xprv isEncrypted testnet (Text.pack projectId)
+      void $ withConnectionDebug $ insertState stateTable
   where
     maybePassphrase :: ByteString -> Maybe Passphrase
     maybePassphrase "" = Nothing
@@ -269,10 +271,6 @@ createWallet source = do
 
     prompt = "Please enter a [9, 12, 15, 18, 21, 24] word mnemonic:"
     promptPass = "Enter passphrase (empty for no passphrase):"
-
-insertState :: StateTable -> IO ()
-insertState stateTable = do
-  print stateTable
 
 -- Restores a wallet from an exported json file comtaining account data with no secrets
 restoreWalletReadOnly :: HasCallStack => FilePath -> IO ()
